@@ -1,0 +1,2796 @@
+{
+ "_note": "A recorded gpt-6-luna investigation of this sample. `solarflare investigate sample --replay` re-runs every query live in a Solari sandbox and checks the results match; the model's decisions are replayed.",
+ "question": "Billed Workers Standard Requests (Workers + Pages Functions) were about 1,600 on 2026-09-25, against about 1,060 on a typical day the week before. Why?",
+ "model": "gpt-6-luna",
+ "recorded_cost_usd": 0.0255754,
+ "steps": [
+  {
+   "purpose": "Read data-source limits before analysis",
+   "query": "SELECT * FROM notes",
+   "result": {
+    "rows": [
+     {
+      "table_name": "collection",
+      "source": "manifest.json",
+      "covers": "What was collected: period, when, anything truncated or skipped",
+      "cannot_show": ""
+     },
+     {
+      "table_name": "resources",
+      "source": "Workers + Pages REST APIs",
+      "covers": "Every Worker and Pages project; script_id is the name used in analytics",
+      "cannot_show": "Workers' *.workers.dev address (not collected)"
+     },
+     {
+      "table_name": "hosts",
+      "source": "Workers domains/routes + Pages domains",
+      "covers": "Which hostname is served by which resource; zone is NULL for *.pages.dev",
+      "cannot_show": ""
+     },
+     {
+      "table_name": "zones",
+      "source": "Zones API",
+      "covers": "The account's domains and their plan",
+      "cannot_show": ""
+     },
+     {
+      "table_name": "deploys",
+      "source": "Workers deployments + Pages deployments APIs",
+      "covers": "Workers: time, source, trigger (deployment vs secret change). Pages: time, branch, commit, message",
+      "cannot_show": "Workers commit info unless deployed from Git or with a message. Last 10 Workers / 25 Pages deploys only"
+     },
+     {
+      "table_name": "workers_daily",
+      "source": "workersInvocationsAdaptive",
+      "covers": "Requests, errors, subrequests, CPU per Worker per day (billed usage)",
+      "cannot_show": "Path, user agent, country, IP"
+     },
+     {
+      "table_name": "workers_hourly",
+      "source": "workersInvocationsAdaptive",
+      "covers": "Same, per hour, for the period only",
+      "cannot_show": "Path, user agent, country, IP"
+     },
+     {
+      "table_name": "functions_daily",
+      "source": "pagesFunctionsInvocationsAdaptiveGroups",
+      "covers": "Requests and errors per Pages Functions script per day (billed usage); project mapped from script_id via the Pages API",
+      "cannot_show": "Path, user agent, country, IP; which hostname it came through"
+     },
+     {
+      "table_name": "functions_minute",
+      "source": "pagesFunctionsInvocationsAdaptiveGroups",
+      "covers": "Same, per minute, for the period only",
+      "cannot_show": "Path, user agent, country, IP; which hostname it came through"
+     },
+     {
+      "table_name": "zone_hourly",
+      "source": "httpRequestsAdaptiveGroups",
+      "covers": "All requests through your zones per hour, host, status",
+      "cannot_show": "Traffic via *.pages.dev or *.workers.dev (not in any zone)"
+     },
+     {
+      "table_name": "zone_requests",
+      "source": "httpRequestsAdaptiveGroups",
+      "covers": "Requests through your zones by host, path, method, status, country, user agent, client network (per hour). ip_net is the client's /24 (IPv6 /48); ip_id is a hash, the same value for the same full IP. security_action (block, challenge...) and security_source (firewallCustom = your rules, firewallManaged = Cloudflare's, rateLimit...) say whether Cloudflare stopped it; 'unknown' means nothing did",
+      "cannot_show": "Traffic via *.pages.dev or *.workers.dev. Includes static files that don't run code and aren't billed, so it can show loud traffic that has nothing to do with a billed spike"
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Break billed requests down by resource over comparison days",
+   "query": "SELECT 'worker' AS kind, worker AS resource, date, requests, errors, subrequests FROM workers_daily WHERE date BETWEEN '2026-09-18' AND '2026-09-25' UNION ALL SELECT 'function', project, date, requests, errors, NULL FROM functions_daily WHERE date BETWEEN '2026-09-18' AND '2026-09-25' ORDER BY date, kind, resource",
+   "result": {
+    "rows": [
+     {
+      "kind": "function",
+      "resource": null,
+      "date": "2026-09-18",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": null
+     },
+     {
+      "kind": "function",
+      "resource": "ops-console",
+      "date": "2026-09-18",
+      "requests": 21,
+      "errors": 0,
+      "subrequests": null
+     },
+     {
+      "kind": "worker",
+      "resource": "blog",
+      "date": "2026-09-18",
+      "requests": 2094,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-auth",
+      "date": "2026-09-18",
+      "requests": 5,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-tapes",
+      "date": "2026-09-18",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-tapes",
+      "date": "2026-09-18",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "ship-worker",
+      "date": "2026-09-18",
+      "requests": 11,
+      "errors": 0,
+      "subrequests": 11
+     },
+     {
+      "kind": "function",
+      "resource": "ops-console",
+      "date": "2026-09-19",
+      "requests": 65,
+      "errors": 0,
+      "subrequests": null
+     },
+     {
+      "kind": "worker",
+      "resource": "blog",
+      "date": "2026-09-19",
+      "requests": 447,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-auth",
+      "date": "2026-09-19",
+      "requests": 4,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-tapes",
+      "date": "2026-09-19",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "function",
+      "resource": null,
+      "date": "2026-09-20",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": null
+     },
+     {
+      "kind": "function",
+      "resource": "ops-console",
+      "date": "2026-09-20",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": null
+     },
+     {
+      "kind": "worker",
+      "resource": "blog",
+      "date": "2026-09-20",
+      "requests": 1702,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-auth",
+      "date": "2026-09-20",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "ship-worker",
+      "date": "2026-09-20",
+      "requests": 11,
+      "errors": 0,
+      "subrequests": 11
+     },
+     {
+      "kind": "function",
+      "resource": "ops-console",
+      "date": "2026-09-21",
+      "requests": 24,
+      "errors": 0,
+      "subrequests": null
+     },
+     {
+      "kind": "worker",
+      "resource": "blog",
+      "date": "2026-09-21",
+      "requests": 1671,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "blog",
+      "date": "2026-09-21",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-auth",
+      "date": "2026-09-21",
+      "requests": 6,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-tapes",
+      "date": "2026-09-21",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-tapes",
+      "date": "2026-09-21",
+      "requests": 3,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "ship-worker",
+      "date": "2026-09-21",
+      "requests": 28,
+      "errors": 0,
+      "subrequests": 28
+     },
+     {
+      "kind": "function",
+      "resource": "ops-console",
+      "date": "2026-09-22",
+      "requests": 20,
+      "errors": 0,
+      "subrequests": null
+     },
+     {
+      "kind": "worker",
+      "resource": "blog",
+      "date": "2026-09-22",
+      "requests": 25,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-auth",
+      "date": "2026-09-22",
+      "requests": 4,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-tapes",
+      "date": "2026-09-22",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "ship-worker",
+      "date": "2026-09-22",
+      "requests": 9,
+      "errors": 0,
+      "subrequests": 9
+     },
+     {
+      "kind": "function",
+      "resource": "ops-console",
+      "date": "2026-09-23",
+      "requests": 3,
+      "errors": 0,
+      "subrequests": null
+     },
+     {
+      "kind": "worker",
+      "resource": "blog",
+      "date": "2026-09-23",
+      "requests": 802,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-auth",
+      "date": "2026-09-23",
+      "requests": 9,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-auth",
+      "date": "2026-09-23",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-tapes",
+      "date": "2026-09-23",
+      "requests": 3,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "ship-worker",
+      "date": "2026-09-23",
+      "requests": 4,
+      "errors": 0,
+      "subrequests": 4
+     },
+     {
+      "kind": "function",
+      "resource": "landing",
+      "date": "2026-09-24",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": null
+     },
+     {
+      "kind": "function",
+      "resource": "ops-console",
+      "date": "2026-09-24",
+      "requests": 18,
+      "errors": 0,
+      "subrequests": null
+     },
+     {
+      "kind": "worker",
+      "resource": "blog",
+      "date": "2026-09-24",
+      "requests": 418,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "blog",
+      "date": "2026-09-24",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-auth",
+      "date": "2026-09-24",
+      "requests": 4,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-tapes",
+      "date": "2026-09-24",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-tapes",
+      "date": "2026-09-24",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "function",
+      "resource": "ops-console",
+      "date": "2026-09-25",
+      "requests": 354,
+      "errors": 0,
+      "subrequests": null
+     },
+     {
+      "kind": "worker",
+      "resource": "blog",
+      "date": "2026-09-25",
+      "requests": 1228,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-auth",
+      "date": "2026-09-25",
+      "requests": 3,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-comments",
+      "date": "2026-09-25",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-events",
+      "date": "2026-09-25",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-tapes",
+      "date": "2026-09-25",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "ship-worker",
+      "date": "2026-09-25",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 1
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Establish daily billed Worker totals and baseline",
+   "query": "SELECT date, SUM(requests) AS workers_requests, SUM(errors) AS workers_errors FROM workers_daily GROUP BY date ORDER BY date",
+   "result": {
+    "rows": [
+     {
+      "date": "2026-09-11",
+      "workers_requests": 1188,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-12",
+      "workers_requests": 633,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-13",
+      "workers_requests": 1183,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-14",
+      "workers_requests": 678,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-15",
+      "workers_requests": 2322,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-16",
+      "workers_requests": 373,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-17",
+      "workers_requests": 1936,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-18",
+      "workers_requests": 2113,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-19",
+      "workers_requests": 452,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-20",
+      "workers_requests": 1714,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-21",
+      "workers_requests": 1710,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-22",
+      "workers_requests": 40,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-23",
+      "workers_requests": 819,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-24",
+      "workers_requests": 425,
+      "workers_errors": 0
+     },
+     {
+      "date": "2026-09-25",
+      "workers_requests": 1238,
+      "workers_errors": 0
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Add Pages Functions billed usage to daily account totals",
+   "query": "SELECT date, SUM(requests) requests, SUM(errors) errors FROM functions_daily GROUP BY date ORDER BY date",
+   "result": {
+    "rows": [
+     {
+      "date": "2026-09-11",
+      "requests": 310,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-12",
+      "requests": 5,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-13",
+      "requests": 496,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-14",
+      "requests": 13,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-15",
+      "requests": 347,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-16",
+      "requests": 1,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-17",
+      "requests": 7,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-18",
+      "requests": 23,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-19",
+      "requests": 65,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-20",
+      "requests": 2,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-21",
+      "requests": 24,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-22",
+      "requests": 20,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-23",
+      "requests": 3,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-24",
+      "requests": 19,
+      "errors": 0
+     },
+     {
+      "date": "2026-09-25",
+      "requests": 354,
+      "errors": 0
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Identify which billed resources account for increase",
+   "query": "SELECT worker, date, status, SUM(requests) requests, SUM(errors) errors, SUM(subrequests) subrequests FROM workers_daily WHERE date BETWEEN '2026-09-18' AND '2026-09-25' GROUP BY worker,date,status ORDER BY date,requests DESC",
+   "result": {
+    "rows": [
+     {
+      "worker": "blog",
+      "date": "2026-09-18",
+      "status": "success",
+      "requests": 2094,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "ship-worker",
+      "date": "2026-09-18",
+      "status": "success",
+      "requests": 11,
+      "errors": 0,
+      "subrequests": 11
+     },
+     {
+      "worker": "music-auth",
+      "date": "2026-09-18",
+      "status": "success",
+      "requests": 5,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-tapes",
+      "date": "2026-09-18",
+      "status": "success",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-tapes",
+      "date": "2026-09-18",
+      "status": "clientDisconnected",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "date": "2026-09-19",
+      "status": "success",
+      "requests": 447,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-auth",
+      "date": "2026-09-19",
+      "status": "success",
+      "requests": 4,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-tapes",
+      "date": "2026-09-19",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "date": "2026-09-20",
+      "status": "success",
+      "requests": 1702,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "ship-worker",
+      "date": "2026-09-20",
+      "status": "success",
+      "requests": 11,
+      "errors": 0,
+      "subrequests": 11
+     },
+     {
+      "worker": "music-auth",
+      "date": "2026-09-20",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "date": "2026-09-21",
+      "status": "success",
+      "requests": 1671,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "ship-worker",
+      "date": "2026-09-21",
+      "status": "success",
+      "requests": 28,
+      "errors": 0,
+      "subrequests": 28
+     },
+     {
+      "worker": "music-auth",
+      "date": "2026-09-21",
+      "status": "success",
+      "requests": 6,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-tapes",
+      "date": "2026-09-21",
+      "status": "success",
+      "requests": 3,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "date": "2026-09-21",
+      "status": "clientDisconnected",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-tapes",
+      "date": "2026-09-21",
+      "status": "clientDisconnected",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "date": "2026-09-22",
+      "status": "success",
+      "requests": 25,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "ship-worker",
+      "date": "2026-09-22",
+      "status": "success",
+      "requests": 9,
+      "errors": 0,
+      "subrequests": 9
+     },
+     {
+      "worker": "music-auth",
+      "date": "2026-09-22",
+      "status": "success",
+      "requests": 4,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-tapes",
+      "date": "2026-09-22",
+      "status": "success",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "date": "2026-09-23",
+      "status": "success",
+      "requests": 802,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-auth",
+      "date": "2026-09-23",
+      "status": "success",
+      "requests": 9,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "ship-worker",
+      "date": "2026-09-23",
+      "status": "success",
+      "requests": 4,
+      "errors": 0,
+      "subrequests": 4
+     },
+     {
+      "worker": "music-tapes",
+      "date": "2026-09-23",
+      "status": "success",
+      "requests": 3,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-auth",
+      "date": "2026-09-23",
+      "status": "clientDisconnected",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "date": "2026-09-24",
+      "status": "success",
+      "requests": 418,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-auth",
+      "date": "2026-09-24",
+      "status": "success",
+      "requests": 4,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "date": "2026-09-24",
+      "status": "clientDisconnected",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-tapes",
+      "date": "2026-09-24",
+      "status": "clientDisconnected",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-tapes",
+      "date": "2026-09-24",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "date": "2026-09-25",
+      "status": "success",
+      "requests": 1228,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-auth",
+      "date": "2026-09-25",
+      "status": "success",
+      "requests": 3,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-comments",
+      "date": "2026-09-25",
+      "status": "success",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-events",
+      "date": "2026-09-25",
+      "status": "success",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-tapes",
+      "date": "2026-09-25",
+      "status": "success",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "ship-worker",
+      "date": "2026-09-25",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 1
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Map analytics resource identifiers to projects",
+   "query": "SELECT * FROM resources ORDER BY kind,name",
+   "result": {
+    "rows": [
+     {
+      "kind": "pages",
+      "name": "arcade",
+      "script_id": "pages-worker--100006-production"
+     },
+     {
+      "kind": "pages",
+      "name": "arcade",
+      "script_id": "pages-worker--100006-preview"
+     },
+     {
+      "kind": "pages",
+      "name": "company-site",
+      "script_id": "pages-worker--100004-production"
+     },
+     {
+      "kind": "pages",
+      "name": "company-site",
+      "script_id": "pages-worker--100004-preview"
+     },
+     {
+      "kind": "pages",
+      "name": "editor",
+      "script_id": "pages-worker--100009-production"
+     },
+     {
+      "kind": "pages",
+      "name": "editor",
+      "script_id": "pages-worker--100009-preview"
+     },
+     {
+      "kind": "pages",
+      "name": "garden-dashboard",
+      "script_id": "pages-worker--100003-production"
+     },
+     {
+      "kind": "pages",
+      "name": "garden-dashboard",
+      "script_id": "pages-worker--100003-preview"
+     },
+     {
+      "kind": "pages",
+      "name": "landing",
+      "script_id": "pages-worker--100002-production"
+     },
+     {
+      "kind": "pages",
+      "name": "landing",
+      "script_id": "pages-worker--100002-preview"
+     },
+     {
+      "kind": "pages",
+      "name": "music",
+      "script_id": "pages-worker--100008-production"
+     },
+     {
+      "kind": "pages",
+      "name": "music",
+      "script_id": "pages-worker--100008-preview"
+     },
+     {
+      "kind": "pages",
+      "name": "notes",
+      "script_id": "pages-worker--100010-production"
+     },
+     {
+      "kind": "pages",
+      "name": "notes",
+      "script_id": "pages-worker--100010-preview"
+     },
+     {
+      "kind": "pages",
+      "name": "ops-console",
+      "script_id": "pages-worker--100007-production"
+     },
+     {
+      "kind": "pages",
+      "name": "ops-console",
+      "script_id": "pages-worker--100007-preview"
+     },
+     {
+      "kind": "pages",
+      "name": "prototype",
+      "script_id": "pages-worker--100005-production"
+     },
+     {
+      "kind": "pages",
+      "name": "prototype",
+      "script_id": "pages-worker--100005-preview"
+     },
+     {
+      "kind": "pages",
+      "name": "quests",
+      "script_id": "pages-worker--100001-production"
+     },
+     {
+      "kind": "pages",
+      "name": "quests",
+      "script_id": "pages-worker--100001-preview"
+     },
+     {
+      "kind": "worker",
+      "name": "answers",
+      "script_id": "answers"
+     },
+     {
+      "kind": "worker",
+      "name": "blog",
+      "script_id": "blog"
+     },
+     {
+      "kind": "worker",
+      "name": "music-auth",
+      "script_id": "music-auth"
+     },
+     {
+      "kind": "worker",
+      "name": "music-comments",
+      "script_id": "music-comments"
+     },
+     {
+      "kind": "worker",
+      "name": "music-events",
+      "script_id": "music-events"
+     },
+     {
+      "kind": "worker",
+      "name": "music-payments",
+      "script_id": "music-payments"
+     },
+     {
+      "kind": "worker",
+      "name": "music-tapes",
+      "script_id": "music-tapes"
+     },
+     {
+      "kind": "worker",
+      "name": "notes-sync",
+      "script_id": "notes-sync"
+     },
+     {
+      "kind": "worker",
+      "name": "polls",
+      "script_id": "polls"
+     },
+     {
+      "kind": "worker",
+      "name": "ship-worker",
+      "script_id": "ship-worker"
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Check whether relevant resources were deployed around the increase",
+   "query": "SELECT resource_kind, resource, time, environment, source, trigger, branch, commit_hash, commit_message FROM deploys WHERE time >= '2026-09-18' AND time < '2026-09-26' ORDER BY time",
+   "result": {
+    "rows": [
+     {
+      "resource_kind": "pages",
+      "resource": "landing",
+      "time": "2026-09-24T18:11:34.889087Z",
+      "environment": "production",
+      "source": "ad_hoc",
+      "trigger": null,
+      "branch": "main",
+      "commit_hash": "a7c7a3807d2b996901a8acd1c8c7140ae2a3840a",
+      "commit_message": "Fix bug"
+     },
+     {
+      "resource_kind": "pages",
+      "resource": "landing",
+      "time": "2026-09-24T18:25:54.314274Z",
+      "environment": "production",
+      "source": "ad_hoc",
+      "trigger": null,
+      "branch": "main",
+      "commit_hash": "cbca5a3b46f2a39e9261b4dfbcbb86be31097cbb",
+      "commit_message": "Refactor"
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Map billed resources to hostnames and zones",
+   "query": "SELECT * FROM hosts ORDER BY resource_kind,resource,host",
+   "result": {
+    "rows": [
+     {
+      "host": "arcade.acme.example",
+      "resource_kind": "pages",
+      "resource": "arcade",
+      "via": "pages_domain",
+      "zone": "acme.example"
+     },
+     {
+      "host": "arcade.pages.dev",
+      "resource_kind": "pages",
+      "resource": "arcade",
+      "via": "pages_dev",
+      "zone": null
+     },
+     {
+      "host": "acme.example",
+      "resource_kind": "pages",
+      "resource": "company-site",
+      "via": "pages_domain",
+      "zone": "acme.example"
+     },
+     {
+      "host": "company-site.pages.dev",
+      "resource_kind": "pages",
+      "resource": "company-site",
+      "via": "pages_dev",
+      "zone": null
+     },
+     {
+      "host": "editor.acme.example",
+      "resource_kind": "pages",
+      "resource": "editor",
+      "via": "pages_domain",
+      "zone": "acme.example"
+     },
+     {
+      "host": "editor.northwind.example",
+      "resource_kind": "pages",
+      "resource": "editor",
+      "via": "pages_domain",
+      "zone": "northwind.example"
+     },
+     {
+      "host": "editor.pages.dev",
+      "resource_kind": "pages",
+      "resource": "editor",
+      "via": "pages_dev",
+      "zone": null
+     },
+     {
+      "host": "garden-dashboard.pages.dev",
+      "resource_kind": "pages",
+      "resource": "garden-dashboard",
+      "via": "pages_dev",
+      "zone": null
+     },
+     {
+      "host": "landing.pages.dev",
+      "resource_kind": "pages",
+      "resource": "landing",
+      "via": "pages_dev",
+      "zone": null
+     },
+     {
+      "host": "contoso.example",
+      "resource_kind": "pages",
+      "resource": "music",
+      "via": "pages_domain",
+      "zone": "contoso.example"
+     },
+     {
+      "host": "music.acme.example",
+      "resource_kind": "pages",
+      "resource": "music",
+      "via": "pages_domain",
+      "zone": "acme.example"
+     },
+     {
+      "host": "music.northwind.example",
+      "resource_kind": "pages",
+      "resource": "music",
+      "via": "pages_domain",
+      "zone": "northwind.example"
+     },
+     {
+      "host": "music.pages.dev",
+      "resource_kind": "pages",
+      "resource": "music",
+      "via": "pages_dev",
+      "zone": null
+     },
+     {
+      "host": "notes.acme.example",
+      "resource_kind": "pages",
+      "resource": "notes",
+      "via": "pages_domain",
+      "zone": "acme.example"
+     },
+     {
+      "host": "notes.northwind.example",
+      "resource_kind": "pages",
+      "resource": "notes",
+      "via": "pages_domain",
+      "zone": "northwind.example"
+     },
+     {
+      "host": "notes.pages.dev",
+      "resource_kind": "pages",
+      "resource": "notes",
+      "via": "pages_dev",
+      "zone": null
+     },
+     {
+      "host": "ops-console-7q1.pages.dev",
+      "resource_kind": "pages",
+      "resource": "ops-console",
+      "via": "pages_dev",
+      "zone": null
+     },
+     {
+      "host": "ops.acme.example",
+      "resource_kind": "pages",
+      "resource": "ops-console",
+      "via": "pages_domain",
+      "zone": "acme.example"
+     },
+     {
+      "host": "prototype.pages.dev",
+      "resource_kind": "pages",
+      "resource": "prototype",
+      "via": "pages_dev",
+      "zone": null
+     },
+     {
+      "host": "quests.acme.example",
+      "resource_kind": "pages",
+      "resource": "quests",
+      "via": "pages_domain",
+      "zone": "acme.example"
+     },
+     {
+      "host": "quests.northwind.example",
+      "resource_kind": "pages",
+      "resource": "quests",
+      "via": "pages_domain",
+      "zone": "northwind.example"
+     },
+     {
+      "host": "quests.pages.dev",
+      "resource_kind": "pages",
+      "resource": "quests",
+      "via": "pages_dev",
+      "zone": null
+     },
+     {
+      "host": "answers.acme.example",
+      "resource_kind": "worker",
+      "resource": "answers",
+      "via": "custom_domain",
+      "zone": "acme.example"
+     },
+     {
+      "host": "blog.acme.example",
+      "resource_kind": "worker",
+      "resource": "blog",
+      "via": "custom_domain",
+      "zone": "acme.example"
+     },
+     {
+      "host": "blog.northwind.example",
+      "resource_kind": "worker",
+      "resource": "blog",
+      "via": "custom_domain",
+      "zone": "northwind.example"
+     },
+     {
+      "host": "ship.northwind.example",
+      "resource_kind": "worker",
+      "resource": "ship-worker",
+      "via": "custom_domain",
+      "zone": "northwind.example"
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Locate timing of Worker requests on September 25",
+   "query": "SELECT worker,hour,status,requests,errors,subrequests FROM workers_hourly WHERE hour LIKE '2026-09-25%' ORDER BY requests DESC",
+   "result": {
+    "rows": [
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T04:00:00Z",
+      "status": "success",
+      "requests": 550,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T01:00:00Z",
+      "status": "success",
+      "requests": 473,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T05:00:00Z",
+      "status": "success",
+      "requests": 66,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T08:00:00Z",
+      "status": "success",
+      "requests": 62,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T21:00:00Z",
+      "status": "success",
+      "requests": 46,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T13:00:00Z",
+      "status": "success",
+      "requests": 16,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T11:00:00Z",
+      "status": "success",
+      "requests": 5,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T16:00:00Z",
+      "status": "success",
+      "requests": 4,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-tapes",
+      "hour": "2026-09-25T13:00:00Z",
+      "status": "success",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-auth",
+      "hour": "2026-09-25T13:00:00Z",
+      "status": "success",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-comments",
+      "hour": "2026-09-25T20:00:00Z",
+      "status": "success",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-events",
+      "hour": "2026-09-25T20:00:00Z",
+      "status": "success",
+      "requests": 2,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "music-auth",
+      "hour": "2026-09-25T00:00:00Z",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T00:00:00Z",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "ship-worker",
+      "hour": "2026-09-25T15:00:00Z",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 1
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T20:00:00Z",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T22:00:00Z",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T12:00:00Z",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T14:00:00Z",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     },
+     {
+      "worker": "blog",
+      "hour": "2026-09-25T15:00:00Z",
+      "status": "success",
+      "requests": 1,
+      "errors": 0,
+      "subrequests": 0
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Locate Pages Functions request surge by minute",
+   "query": "SELECT project,script_id,minute,requests,errors FROM functions_minute WHERE minute LIKE '2026-09-25%' ORDER BY requests DESC LIMIT 50",
+   "result": {
+    "rows": [
+     {
+      "project": "ops-console",
+      "script_id": "pages-worker--100007-production",
+      "minute": "2026-09-25T20:12:00Z",
+      "requests": 351,
+      "errors": 0
+     },
+     {
+      "project": "ops-console",
+      "script_id": "pages-worker--100007-production",
+      "minute": "2026-09-25T23:57:00Z",
+      "requests": 1,
+      "errors": 0
+     },
+     {
+      "project": "ops-console",
+      "script_id": "pages-worker--100007-production",
+      "minute": "2026-09-25T01:28:00Z",
+      "requests": 1,
+      "errors": 0
+     },
+     {
+      "project": "ops-console",
+      "script_id": "pages-worker--100007-production",
+      "minute": "2026-09-25T06:31:00Z",
+      "requests": 1,
+      "errors": 0
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Check matching zone traffic for billed resources and spike hours",
+   "query": "SELECT hour,host,SUM(requests) AS requests FROM zone_hourly WHERE hour >= '2026-09-25T00:00' AND hour < '2026-09-26' AND (host IN ('ops.acme.example','blog.acme.example','blog.northwind.example')) GROUP BY hour,host ORDER BY hour,host",
+   "result": {
+    "rows": [
+     {
+      "hour": "2026-09-25T00:00:00Z",
+      "host": "blog.acme.example",
+      "requests": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "requests": 1149
+     },
+     {
+      "hour": "2026-09-25T04:00:00Z",
+      "host": "blog.acme.example",
+      "requests": 299
+     },
+     {
+      "hour": "2026-09-25T04:00:00Z",
+      "host": "blog.northwind.example",
+      "requests": 266
+     },
+     {
+      "hour": "2026-09-25T05:00:00Z",
+      "host": "blog.acme.example",
+      "requests": 69
+     },
+     {
+      "hour": "2026-09-25T08:00:00Z",
+      "host": "blog.northwind.example",
+      "requests": 78
+     },
+     {
+      "hour": "2026-09-25T11:00:00Z",
+      "host": "blog.acme.example",
+      "requests": 4
+     },
+     {
+      "hour": "2026-09-25T11:00:00Z",
+      "host": "blog.northwind.example",
+      "requests": 1
+     },
+     {
+      "hour": "2026-09-25T11:00:00Z",
+      "host": "ops.acme.example",
+      "requests": 4
+     },
+     {
+      "hour": "2026-09-25T12:00:00Z",
+      "host": "blog.acme.example",
+      "requests": 1
+     },
+     {
+      "hour": "2026-09-25T13:00:00Z",
+      "host": "blog.acme.example",
+      "requests": 16
+     },
+     {
+      "hour": "2026-09-25T13:00:00Z",
+      "host": "blog.northwind.example",
+      "requests": 89
+     },
+     {
+      "hour": "2026-09-25T14:00:00Z",
+      "host": "blog.acme.example",
+      "requests": 1
+     },
+     {
+      "hour": "2026-09-25T15:00:00Z",
+      "host": "blog.acme.example",
+      "requests": 1
+     },
+     {
+      "hour": "2026-09-25T16:00:00Z",
+      "host": "blog.acme.example",
+      "requests": 17
+     },
+     {
+      "hour": "2026-09-25T16:00:00Z",
+      "host": "ops.acme.example",
+      "requests": 1
+     },
+     {
+      "hour": "2026-09-25T18:00:00Z",
+      "host": "ops.acme.example",
+      "requests": 4
+     },
+     {
+      "hour": "2026-09-25T20:00:00Z",
+      "host": "blog.northwind.example",
+      "requests": 2
+     },
+     {
+      "hour": "2026-09-25T21:00:00Z",
+      "host": "blog.acme.example",
+      "requests": 48
+     },
+     {
+      "hour": "2026-09-25T21:00:00Z",
+      "host": "blog.northwind.example",
+      "requests": 1
+     },
+     {
+      "hour": "2026-09-25T21:00:00Z",
+      "host": "ops.acme.example",
+      "requests": 3
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "host": "blog.northwind.example",
+      "requests": 157
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "host": "ops.acme.example",
+      "requests": 122
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Check Pages project deployment history for launch or change",
+   "query": "SELECT * FROM deploys WHERE resource='ops-console' ORDER BY time",
+   "result": {
+    "rows": [
+     {
+      "resource_kind": "pages",
+      "resource": "ops-console",
+      "time": "2026-06-16T02:12:14.914562Z",
+      "environment": "production",
+      "source": "ad_hoc",
+      "trigger": null,
+      "branch": "main",
+      "commit_hash": "e2cce89bab96fd73253c7875ffd3d6d3002b4734",
+      "commit_message": "Fix bug"
+     },
+     {
+      "resource_kind": "pages",
+      "resource": "ops-console",
+      "time": "2026-06-16T02:32:50.345194Z",
+      "environment": "production",
+      "source": "ad_hoc",
+      "trigger": null,
+      "branch": "main",
+      "commit_hash": "e2cce89bab96fd73253c7875ffd3d6d3002b4734",
+      "commit_message": "Fix bug"
+     },
+     {
+      "resource_kind": "pages",
+      "resource": "ops-console",
+      "time": "2026-06-16T16:41:54.842557Z",
+      "environment": "production",
+      "source": "ad_hoc",
+      "trigger": null,
+      "branch": "main",
+      "commit_hash": "e2cce89bab96fd73253c7875ffd3d6d3002b4734",
+      "commit_message": "Fix bug"
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Inspect zone-visible Ops Console requests near function burst",
+   "query": "SELECT hour,path,method,status,country,user_agent,security_action,security_source,SUM(requests) requests,COUNT(DISTINCT ip_id) ips FROM zone_requests WHERE host='ops.acme.example' AND hour >= '2026-09-25T18:00:00Z' AND hour < '2026-09-26T00:00:00Z' GROUP BY hour,path,method,status,country,user_agent,security_action,security_source ORDER BY hour,requests DESC",
+   "result": {
+    "rows": [
+     {
+      "hour": "2026-09-25T18:00:00Z",
+      "path": "/",
+      "method": "GET",
+      "status": 301,
+      "country": "ID",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 1,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T18:00:00Z",
+      "path": "/",
+      "method": "GET",
+      "status": 302,
+      "country": "ID",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 1,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T18:00:00Z",
+      "path": "/.git/config",
+      "method": "GET",
+      "status": 301,
+      "country": "ID",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 1,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T18:00:00Z",
+      "path": "/.git/config",
+      "method": "GET",
+      "status": 302,
+      "country": "ID",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 1,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T21:00:00Z",
+      "path": "/",
+      "method": "HEAD",
+      "status": 302,
+      "country": "US",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36 (compatible; +https://developers.cloudflare.com/security-center/)",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 2,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T21:00:00Z",
+      "path": "/",
+      "method": "HEAD",
+      "status": 301,
+      "country": "US",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36 (compatible; +https://developers.cloudflare.com/security-center/)",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 1,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/.aws/credentials",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 24,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/.git/logs/HEAD",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 24,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/test/.env",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 24,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/credentials",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 10,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/credentials.ini",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 10,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/p/68ef25.js",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 8,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/p/6f461b",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 8,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/config.js",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 5,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/.git/ORIG_HEAD",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 2,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/config/config.js",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 2,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/public_html/.env",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 2,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 1,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/",
+      "method": "GET",
+      "status": 504,
+      "country": "BE",
+      "user_agent": "nginx-ssl early hints",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 1,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T22:00:00Z",
+      "path": "/server/backend/.env",
+      "method": "GET",
+      "status": 302,
+      "country": "BE",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 1,
+      "ips": 1
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Determine whether the matching Blog request bursts look like crawler/scanner traffic",
+   "query": "SELECT hour,host,path,user_agent,status,security_action,security_source,SUM(requests) requests,COUNT(DISTINCT ip_id) ips FROM zone_requests WHERE host IN ('blog.acme.example','blog.northwind.example') AND hour IN ('2026-09-25T01:00:00Z','2026-09-25T04:00:00Z') GROUP BY hour,host,path,user_agent,status,security_action,security_source ORDER BY hour,requests DESC LIMIT 30",
+   "result": {
+    "rows": [
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "requests": 180,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/10ed4c",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "requests": 150,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/475690",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "requests": 90,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/40bfd2",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 56,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/f73af7",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "requests": 54,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/91e036",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 48,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/2c19cb",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 33,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/c2cd3e",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "requests": 27,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/blog/index.php",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 24,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 405,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 21,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/2edfad",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 403,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 21,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/73a76d",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 21,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 200,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 18,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/index.php",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 18,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/3fd041",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 18,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/6f5d4f",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 308,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 18,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/6f5d4f",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 403,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 18,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/c4eaa4",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 18,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/ea10d3",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 18,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/a9967e",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 16,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/wp/index.php",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 16,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/1de481",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "requests": 15,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/78f514",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "requests": 15,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/e3ad69",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 308,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 14,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/178adc",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 13,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/1f0d84",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "requests": 13,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/e8b85d",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 308,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 10,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/wp/index.php",
+      "user_agent": "WordPress/6.4.3",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 10,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/p/22aefd",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "requests": 9,
+      "ips": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "path": "/",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "status": 403,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "requests": 8,
+      "ips": 1
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Calculate like-for-like billed totals and precise baseline",
+   "query": "WITH daily AS (SELECT date, SUM(requests) req FROM workers_daily GROUP BY date UNION ALL SELECT date,SUM(requests) FROM functions_daily GROUP BY date), totals AS (SELECT date,SUM(req) req FROM daily GROUP BY date) SELECT date,req FROM totals WHERE date BETWEEN '2026-09-18' AND '2026-09-25' ORDER BY date",
+   "result": {
+    "rows": [
+     {
+      "date": "2026-09-18",
+      "req": 2136
+     },
+     {
+      "date": "2026-09-19",
+      "req": 517
+     },
+     {
+      "date": "2026-09-20",
+      "req": 1716
+     },
+     {
+      "date": "2026-09-21",
+      "req": 1734
+     },
+     {
+      "date": "2026-09-22",
+      "req": 60
+     },
+     {
+      "date": "2026-09-23",
+      "req": 822
+     },
+     {
+      "date": "2026-09-24",
+      "req": 444
+     },
+     {
+      "date": "2026-09-25",
+      "req": 1592
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Separate blocked and allowed-looking Blog traffic in burst hours",
+   "query": "SELECT hour,host,status,security_action,security_source,user_agent,ip_id,SUM(requests) requests FROM zone_requests WHERE host IN ('blog.acme.example','blog.northwind.example') AND hour IN ('2026-09-25T01:00:00Z','2026-09-25T04:00:00Z') GROUP BY hour,host,status,security_action,security_source,user_agent,ip_id ORDER BY hour,requests DESC LIMIT 30",
+   "result": {
+    "rows": [
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0",
+      "ip_id": "69205c50d9",
+      "requests": 556
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "ip_id": "69205c50d9",
+      "requests": 313
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 403,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "ip_id": "69205c50d9",
+      "requests": 80
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 308,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "ip_id": "69205c50d9",
+      "requests": 56
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (compatible; jscrawler/0.1; +https://github.com/)",
+      "ip_id": "a0b0022cc7",
+      "requests": 45
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "WordPress/6.4.3",
+      "ip_id": "69205c50d9",
+      "requests": 37
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 405,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "ip_id": "69205c50d9",
+      "requests": 21
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 200,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "ip_id": "69205c50d9",
+      "requests": 18
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 200,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (compatible; jscrawler/0.1; +https://github.com/)",
+      "ip_id": "a0b0022cc7",
+      "requests": 11
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "ip_id": "69205c50d9",
+      "requests": 6
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "ip_id": "69205c50d9",
+      "requests": 2
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "metabase-cve-2026-72898-detect/1.0 (benign detection probes only)",
+      "ip_id": "6f192e7284",
+      "requests": 2
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 200,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+      "ip_id": "69205c50d9",
+      "requests": 1
+     },
+     {
+      "hour": "2026-09-25T01:00:00Z",
+      "host": "blog.acme.example",
+      "status": 200,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "ip_id": "69205c50d9",
+      "requests": 1
+     },
+     {
+      "hour": "2026-09-25T04:00:00Z",
+      "host": "blog.acme.example",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "ip_id": "2ff1287493",
+      "requests": 263
+     },
+     {
+      "hour": "2026-09-25T04:00:00Z",
+      "host": "blog.northwind.example",
+      "status": 404,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "ip_id": "2ff1287493",
+      "requests": 255
+     },
+     {
+      "hour": "2026-09-25T04:00:00Z",
+      "host": "blog.acme.example",
+      "status": 403,
+      "security_action": "block",
+      "security_source": "firewallManaged",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "ip_id": "2ff1287493",
+      "requests": 27
+     },
+     {
+      "hour": "2026-09-25T04:00:00Z",
+      "host": "blog.northwind.example",
+      "status": 200,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+      "ip_id": "2ff1287493",
+      "requests": 11
+     },
+     {
+      "hour": "2026-09-25T04:00:00Z",
+      "host": "blog.acme.example",
+      "status": 200,
+      "security_action": "unknown",
+      "security_source": "unknown",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+      "ip_id": "2ff1287493",
+      "requests": 9
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Confirm recent deploy history for the two resources driving the increase",
+   "query": "SELECT resource_kind,resource,time,environment,source,trigger,branch,commit_message FROM deploys WHERE resource IN ('blog','ops-console') ORDER BY resource,time",
+   "result": {
+    "rows": [
+     {
+      "resource_kind": "worker",
+      "resource": "blog",
+      "time": "2026-02-09T20:24:02.305888Z",
+      "environment": null,
+      "source": "wrangler",
+      "trigger": "deployment",
+      "branch": null,
+      "commit_message": null
+     },
+     {
+      "resource_kind": "worker",
+      "resource": "blog",
+      "time": "2026-02-09T20:26:44.974319Z",
+      "environment": null,
+      "source": "wrangler",
+      "trigger": "deployment",
+      "branch": null,
+      "commit_message": null
+     },
+     {
+      "resource_kind": "worker",
+      "resource": "blog",
+      "time": "2026-02-09T20:55:42.349803Z",
+      "environment": null,
+      "source": "wrangler",
+      "trigger": "deployment",
+      "branch": null,
+      "commit_message": null
+     },
+     {
+      "resource_kind": "worker",
+      "resource": "blog",
+      "time": "2026-02-09T20:58:00.933842Z",
+      "environment": null,
+      "source": "wrangler",
+      "trigger": "deployment",
+      "branch": null,
+      "commit_message": null
+     },
+     {
+      "resource_kind": "worker",
+      "resource": "blog",
+      "time": "2026-02-09T20:58:51.500449Z",
+      "environment": null,
+      "source": "wrangler",
+      "trigger": "deployment",
+      "branch": null,
+      "commit_message": null
+     },
+     {
+      "resource_kind": "worker",
+      "resource": "blog",
+      "time": "2026-02-09T21:06:44.732388Z",
+      "environment": null,
+      "source": "wrangler",
+      "trigger": "deployment",
+      "branch": null,
+      "commit_message": null
+     },
+     {
+      "resource_kind": "worker",
+      "resource": "blog",
+      "time": "2026-02-12T05:54:53.932681Z",
+      "environment": null,
+      "source": "wrangler",
+      "trigger": "deployment",
+      "branch": null,
+      "commit_message": null
+     },
+     {
+      "resource_kind": "worker",
+      "resource": "blog",
+      "time": "2026-09-17T01:25:41.156498Z",
+      "environment": null,
+      "source": "wrangler",
+      "trigger": "secret",
+      "branch": null,
+      "commit_message": null
+     },
+     {
+      "resource_kind": "worker",
+      "resource": "blog",
+      "time": "2026-09-17T01:27:57.043558Z",
+      "environment": null,
+      "source": "wrangler",
+      "trigger": "secret",
+      "branch": null,
+      "commit_message": null
+     },
+     {
+      "resource_kind": "worker",
+      "resource": "blog",
+      "time": "2026-09-17T01:31:16.924958Z",
+      "environment": null,
+      "source": "wrangler",
+      "trigger": "secret",
+      "branch": null,
+      "commit_message": null
+     },
+     {
+      "resource_kind": "pages",
+      "resource": "ops-console",
+      "time": "2026-06-16T02:12:14.914562Z",
+      "environment": "production",
+      "source": "ad_hoc",
+      "trigger": null,
+      "branch": "main",
+      "commit_message": "Fix bug"
+     },
+     {
+      "resource_kind": "pages",
+      "resource": "ops-console",
+      "time": "2026-06-16T02:32:50.345194Z",
+      "environment": "production",
+      "source": "ad_hoc",
+      "trigger": null,
+      "branch": "main",
+      "commit_message": "Fix bug"
+     },
+     {
+      "resource_kind": "pages",
+      "resource": "ops-console",
+      "time": "2026-06-16T16:41:54.842557Z",
+      "environment": "production",
+      "source": "ad_hoc",
+      "trigger": null,
+      "branch": "main",
+      "commit_message": "Fix bug"
+     }
+    ],
+    "truncated": false
+   }
+  },
+  {
+   "purpose": "Quantify resource-level change versus seven preceding days and errors",
+   "query": "WITH w AS (SELECT worker resource, SUM(CASE WHEN date BETWEEN '2026-09-18' AND '2026-09-24' THEN requests ELSE 0 END)/7.0 avg_prev, SUM(CASE WHEN date='2026-09-25' THEN requests ELSE 0 END) today, SUM(CASE WHEN date='2026-09-25' THEN errors ELSE 0 END) errors_today FROM workers_daily GROUP BY worker), f AS (SELECT project resource, SUM(CASE WHEN date BETWEEN '2026-09-18' AND '2026-09-24' THEN requests ELSE 0 END)/7.0 avg_prev, SUM(CASE WHEN date='2026-09-25' THEN requests ELSE 0 END) today, SUM(CASE WHEN date='2026-09-25' THEN errors ELSE 0 END) errors_today FROM functions_daily GROUP BY project) SELECT 'worker' kind,resource,avg_prev,today,errors_today FROM w WHERE avg_prev>0 OR today>0 UNION ALL SELECT 'function',resource,avg_prev,today,errors_today FROM f WHERE avg_prev>0 OR today>0 ORDER BY today DESC",
+   "result": {
+    "rows": [
+     {
+      "kind": "worker",
+      "resource": "blog",
+      "avg_prev": 1023.0,
+      "today": 1228,
+      "errors_today": 0
+     },
+     {
+      "kind": "function",
+      "resource": "ops-console",
+      "avg_prev": 21.714285714285715,
+      "today": 354,
+      "errors_today": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-auth",
+      "avg_prev": 4.857142857142857,
+      "today": 3,
+      "errors_today": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-comments",
+      "avg_prev": 0.0,
+      "today": 2,
+      "errors_today": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-events",
+      "avg_prev": 0.0,
+      "today": 2,
+      "errors_today": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "music-tapes",
+      "avg_prev": 2.142857142857143,
+      "today": 2,
+      "errors_today": 0
+     },
+     {
+      "kind": "worker",
+      "resource": "ship-worker",
+      "avg_prev": 9.0,
+      "today": 1,
+      "errors_today": 0
+     },
+     {
+      "kind": "function",
+      "resource": null,
+      "avg_prev": 0.42857142857142855,
+      "today": 0,
+      "errors_today": 0
+     },
+     {
+      "kind": "function",
+      "resource": "landing",
+      "avg_prev": 0.14285714285714285,
+      "today": 0,
+      "errors_today": 0
+     }
+    ],
+    "truncated": false
+   }
+  }
+ ],
+ "finding": {
+  "summary": "The cause of the full-day increase is undetermined. Billed usage was 1,592 on 2026-09-25 versus a 1,061/day average over 2026-09-18\u201324; the clearest outlier was 351 ops-console Pages Function requests in the single minute 20:12 UTC (354 total that day), but the available Functions data cannot show their hostname, paths, or clients. Blog also ran above its prior-week average, with zone traffic showing scanner-like activity on its mapped hosts, but that does not explain the separate ops-console minute burst.",
+  "where": "Account-wide, 2026-09-25 UTC day: ops-console Pages Function, especially 20:12 UTC; blog Worker activity concentrated at 01:00 and 04:00 UTC. Total billed requests: 1,592 vs 1,061/day average for 2026-09-18\u201324.",
+  "cause": "undetermined",
+  "confidence": "high",
+  "evidence": [
+   {
+    "fact": "Summed Workers and Pages Functions requests were 1,592 on 2026-09-25; the seven preceding days summed to 7,429, or 1,061.3/day.",
+    "table": "workers_daily; functions_daily"
+   },
+   {
+    "fact": "ops-console recorded 354 Pages Function requests on 2026-09-25 versus 21.7/day over 2026-09-18\u201324. functions_minute attributes 351 of the 354 to pages-worker--100007-production at 20:12 UTC; resources maps that script ID to the ops-console Pages project. Errors were zero that day.",
+    "table": "functions_daily; functions_minute; resources"
+   },
+   {
+    "fact": "blog recorded 1,228 Worker requests versus a 1,023/day average over the preceding seven days. workers_hourly shows 473 at 01:00 and 550 at 04:00 UTC, with zero errors; hosts maps blog to blog.acme.example and blog.northwind.example.",
+    "table": "workers_daily; workers_hourly; hosts"
+   },
+   {
+    "fact": "At 01:00 and 04:00 UTC, zone_requests for the mapped blog hosts included concentrated probing from individual client IP hashes, including 404s and some firewallManaged blocks; this is scanner-like zone traffic concurrent with the blog Worker bursts, but zone traffic also includes requests not billed as code executions.",
+    "table": "zone_requests; hosts; workers_hourly"
+   },
+   {
+    "fact": "No deployment of blog or ops-console is recorded near the increase; the latest recorded blog entries are secret changes on 2026-09-17, and the recorded ops-console deployments are from 2026-06-16.",
+    "table": "deploys"
+   }
+  ],
+  "ruled_out": [
+   {
+    "suspect": "A deploy or launch caused the increase",
+    "why": "Neither of the principal resources has a deployment recorded near 2026-09-25, and both had prior usage; the recorded ops-console deployments are from June."
+   },
+   {
+    "suspect": "Errors or retries/loops explain the rise",
+    "why": "workers_daily and functions_daily show zero errors for the leading resources on 2026-09-25. This does not rule out application-level retries that are not represented as errors."
+   },
+   {
+    "suspect": "The ops.acme.example scanner traffic at 22:00 UTC explains the 20:12 ops-console Functions burst",
+    "why": "zone_requests shows credential/config probing at 22:00, not at the Functions burst time; Functions analytics cannot establish that the 20:12 requests came through this hostname. Traffic via the project's pages.dev hostname is not present in zone data."
+   }
+  ],
+  "gaps": [
+   "Functions analytics has no path, client, user-agent, or hostname detail, so the cause and source of the 351-request ops-console minute cannot be determined from this collection.",
+   "zone_requests includes static requests and requests stopped by Cloudflare; it cannot prove which blog requests invoked code. It also omits *.pages.dev traffic.",
+   "The data does not establish whether the ops-console burst was human traffic, a bot, a scheduled task, or app behavior; application logs or request-level Pages telemetry for 20:12 UTC would settle this."
+  ],
+  "impact": "About 531 more billed requests than the prior-week daily average (roughly 50%); errors were not elevated. The blog host data shows scanner-like probing, including attempts against paths that returned 404 or were blocked, so review protections, but the largest single billed burst has no attributable security cause in this data.",
+  "recommendation": "Inspect ops-console Pages request logs or analytics around 20:12 UTC on 2026-09-25, including pages.dev traffic, route, client, and invocation origin; check scheduled-task and application logs for the same minute. For blog, review the scanner traffic and existing managed/custom firewall or rate-limit coverage, while distinguishing blocked requests from requests that invoke the Worker.",
+  "areas": [
+   "cost",
+   "security",
+   "traffic_patterns",
+   "deploys"
+  ]
+ }
+}

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solarflare"
+version = "0.1.0"
+description = "What happened on your Cloudflare account, and does it matter?"
+requires-python = ">=3.11"
+dependencies = ["solari-sandbox>=0.2.3"]
+
+[project.scripts]
+solarflare = "solarflare.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["solarflare*"]

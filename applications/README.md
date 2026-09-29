@@ -40,3 +40,4 @@ variable it reads and nothing else.
 | Application | Language | What it does |
 | --- | --- | --- |
 | [worldline](worldline) | Python | Snapshot-branch competing plans, verify their artifacts, and replay only the winner |
+| [solarflare](solarflare) | Python | What happened on your Cloudflare account: an agent investigates usage and security changes, its analysis code running in a hardened (no-network) sandbox |

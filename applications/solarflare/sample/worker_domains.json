@@ -1,0 +1,1 @@
+{"result":[{"hostname":"blog.northwind.example","service":"blog"},{"hostname":"blog.acme.example","service":"blog"},{"hostname":"ship.northwind.example","service":"ship-worker"},{"hostname":"answers.acme.example","service":"answers"}]}

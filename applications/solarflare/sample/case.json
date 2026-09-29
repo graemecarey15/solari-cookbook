@@ -1,0 +1,18 @@
+{
+ "question": "Billed Workers Standard Requests (Workers + Pages Functions) were about 1,600 on 2026-09-25, against about 1,060 on a typical day the week before. Why?",
+ "expect": {
+  "where": [
+   "ops-console"
+  ],
+  "cause": "undetermined",
+  "not_blamed": [
+   "editor"
+  ],
+  "no_leaning_toward": [
+   "scan",
+   "bot",
+   "crawler",
+   "probe"
+  ]
+ }
+}
